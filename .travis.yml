@@ -1,3 +1,5 @@
 language: go
 
-script: ./build.sh build && ./build.sh test
+script: go get golang.org/x/lint/golint && \
+        ./build.sh build && \
+        ./build.sh test
