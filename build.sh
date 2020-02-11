@@ -19,7 +19,7 @@ report() {
 }
 
 test() {
-  go test -v ./...
+  go test -coverprofile=coverage.out -v ./...
 }
 
 case "$CMD" in

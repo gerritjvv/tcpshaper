@@ -4,7 +4,8 @@ import (
 	"sync"
 )
 
-type rateConfig struct {
+// RateConfig holds the limiter configuration limit and burst values.
+type RateConfig struct {
 	rwLock sync.RWMutex
 	// limit is the overall bytes per second rate
 	limit int64
@@ -13,7 +14,7 @@ type rateConfig struct {
 }
 
 // SetLimit sets the overall bytes per second rate
-func (conf *rateConfig) SetLimit(limit int64) {
+func (conf *RateConfig) SetLimit(limit int64) {
 	conf.rwLock.Lock()
 	defer conf.rwLock.Unlock()
 
@@ -21,7 +22,7 @@ func (conf *rateConfig) SetLimit(limit int64) {
 }
 
 // SetBurst sets the number of bytes that can be consumed in a single Read call
-func (conf *rateConfig) SetBurst(burst int) {
+func (conf *RateConfig) SetBurst(burst int) {
 	conf.rwLock.Lock()
 	defer conf.rwLock.Unlock()
 
@@ -29,7 +30,7 @@ func (conf *rateConfig) SetBurst(burst int) {
 }
 
 // Limit returns the limit in bytes per second.
-func (conf *rateConfig) Limit() int64 {
+func (conf *RateConfig) Limit() int64 {
 	conf.rwLock.RLock()
 	defer conf.rwLock.RUnlock()
 
@@ -37,7 +38,7 @@ func (conf *rateConfig) Limit() int64 {
 }
 
 // Burst returns the burst in bytes per second.
-func (conf *rateConfig) Burst() int {
+func (conf *RateConfig) Burst() int {
 	conf.rwLock.RLock()
 	defer conf.rwLock.RUnlock()
 
@@ -53,10 +54,10 @@ func validateBurst(burst int, limit int64) int {
 }
 
 // NewRateConfig contains the over limit in bytes per second and the burst; maximum bytes that can be read in a single call.
-// The rateConfig instance that can be read and updated from multiple go routines.
-func NewRateConfig(limit int64, burst int) *rateConfig {
+// The RateConfig instance that can be read and updated from multiple go routines.
+func NewRateConfig(limit int64, burst int) *RateConfig {
 
-	config := rateConfig{
+	config := RateConfig{
 		limit: limit,
 		burst: validateBurst(burst, limit),
 	}

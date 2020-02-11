@@ -2,53 +2,25 @@ package bandwidth
 
 import (
 	"context"
-	"io"
-	"math/rand"
 	"net"
-	"sync/atomic"
 	"testing"
 	"time"
 )
 
-type connReadData struct {
+type connWriteData struct {
 	ts time.Duration
 	n  int // bytes read
 }
 
 type mockConn struct {
-	data   []byte
-	cycles int
-
-	counter int32
 }
 
-func (c *mockConn) GetAndAdd() int {
-	v := c.counter
-	atomic.AddInt32(&c.counter, 1)
-	return int(v)
+func (c *mockConn) Read(b []byte) (int, error) {
+	return len(b), nil
 }
 
-func newMockConn(byteLen int, cycles int) *mockConn {
-
-	data := make([]byte, byteLen)
-	for i := 0; i < byteLen; i++ {
-		data[i] = byte(rand.Int())
-	}
-
-	return &mockConn{cycles: cycles, data: data, counter: 0}
-}
-
-func (c *mockConn) Read(b []byte) (n int, err error) {
-	i := c.GetAndAdd()
-	if i < c.cycles {
-		return copy(b, c.data), nil
-	}
-
-	return 0, io.EOF
-}
-
-func (c mockConn) Write(b []byte) (n int, err error) {
-	panic("implement me")
+func (c mockConn) Write(b []byte) (int, error) {
+	return len(b), nil
 }
 
 func (c mockConn) Close() error {
@@ -63,30 +35,35 @@ func (c mockConn) RemoteAddr() net.Addr {
 	panic("implement me")
 }
 
-func (c mockConn) SetDeadline(t time.Time) error {
+func (c mockConn) SetDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-func (c mockConn) SetReadDeadline(t time.Time) error {
+func (c mockConn) SetReadDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-func (c mockConn) SetWriteDeadline(t time.Time) error {
+func (c mockConn) SetWriteDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-// TestReadMoreThanBurst test that we get an error when we read more than the burst value
-func TestReadMoreThanBurst(t *testing.T)  {
+// TestReadMoreThanBurst test that we get an error when we write more than the burst value
+func TestReadMoreThanBurst(t *testing.T) {
 	conf := NewRateConfig(10, 20)
 
 	limiter := NewBandwidthLimiter(conf)
 	ctx := context.Background()
 
-	conn := newMockConn(100, 3)
-	rConn := NewRateLimitedConn(ctx, limiter, conn)
+	conn := &mockConn{}
+	rConn := NewRateLimitedConn(ctx, limiter, limiter, conn)
 
-	_, err := rConn.Read(make([]byte, conf.Burst() + 1))
+	_, err := rConn.Write(make([]byte, conf.Burst()+1))
 
+	if err == nil {
+		t.Fatal()
+	}
+
+	_, err = rConn.Read(make([]byte, conf.Burst()+1))
 	if err == nil {
 		t.Fatal()
 	}
@@ -107,22 +84,33 @@ func TestNewRateLimitedConn(t *testing.T) {
 	limiter := NewBandwidthLimiter(conf)
 	ctx := context.Background()
 
-	conn := newMockConn(100, 3)
-	rConn := NewRateLimitedConn(ctx, limiter, conn)
+	conn := &mockConn{}
+	rConn := NewRateLimitedConn(ctx, limiter, limiter, conn)
 
-	var readData []connReadData
+	var writeData []connWriteData
 
 	startTime := time.Now()
 
-	for {
+	var n int
+	var err error
+
+	bts := make([]byte, 20)
+
+	for i := 0; i < 3; i++ {
 		// read 20 bytes, now we need to wait 2 seconds
-		n, err := rConn.Read(make([]byte, 20))
+		if i%2 == 0 {
+			n, err = rConn.Read(bts)
+		} else {
+			n, err = rConn.Write(bts)
+		}
+
 		if err != nil {
-			break
+			t.Fatalf("no error expected here %s", err)
+			return
 		}
 		timeAfterRead := time.Now()
 
-		readData = append(readData, connReadData{
+		writeData = append(writeData, connWriteData{
 			ts: timeAfterRead.Sub(startTime).Round(time.Second),
 			n:  n,
 		})
@@ -131,7 +119,7 @@ func TestNewRateLimitedConn(t *testing.T) {
 	}
 
 	// check that all but the first time elapsed is 2 seconds
-	for _, d := range readData[1:] {
+	for _, d := range writeData[1:] {
 		if d.ts != (2 * time.Second) {
 			t.Fatalf("the time difference is not 2 seconds, we got %f", d.ts.Round(time.Second).Seconds())
 		}

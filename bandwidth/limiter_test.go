@@ -12,11 +12,11 @@ type alwaysErrorLimiter struct {
 	Limiter
 }
 
-func (a *alwaysErrorLimiter) WaitN(tx context.Context, n int) error {
+func (l *alwaysErrorLimiter) WaitN(tx context.Context, _ int) error {
 	return fmt.Errorf("test error")
 }
 
-func (l *alwaysErrorLimiter) Child(conf *rateConfig) Limiter {
+func (l *alwaysErrorLimiter) Child(conf *RateConfig) Limiter {
 	return newBandwidthLimiter(l, conf)
 }
 
@@ -55,6 +55,7 @@ func TestLimiter_ChildParentWaitNTimings(t *testing.T) {
 
 	for _, l := range childLimiters {
 		wg.Add(1)
+		childLimiter := l
 		go func() {
 
 			waitTimes := []time.Duration{}
@@ -62,7 +63,7 @@ func TestLimiter_ChildParentWaitNTimings(t *testing.T) {
 
 			for i:= 0 ; i < 3; i++ {
 
-				l.WaitN(ctx, 10)
+				childLimiter.WaitN(ctx, 10)
 				afterWaitTime := time.Now()
 
 				waitTimes = append(waitTimes, afterWaitTime.Sub(startTime).Round(time.Second))
