@@ -1,28 +1,65 @@
 package bandwidth
 
-import "sync/atomic"
+import (
+	"sync"
+)
 
-type RateConfig struct {
-	limit atomic.Value
-	burst atomic.Value
+type rateConfig struct {
+	rwLock sync.RWMutex
+	// limit is the overall bytes per second rate
+	limit int64
+	// buts is the number of bytes that can be consumed in a single Read call
+	burst int
 }
 
-func (conf *RateConfig) SetLimit(limit float64) {
-	conf.limit.Store(limit)
+// SetLimit sets the overall bytes per second rate
+func (conf *rateConfig) SetLimit(limit int64) {
+	conf.rwLock.Lock()
+	defer conf.rwLock.Unlock()
+
+	conf.limit = limit
 }
 
-func (conf *RateConfig) SetBurst(burst int) {
-	conf.limit.Store(burst)
+// SetBurst sets the number of bytes that can be consumed in a single Read call
+func (conf *rateConfig) SetBurst(burst int) {
+	conf.rwLock.Lock()
+	defer conf.rwLock.Unlock()
+
+	conf.burst = validateBurst(burst, conf.limit)
 }
 
-func (conf *RateConfig) Limit() float64 {
-	// We don't expect a type cast here because we know the value is int
-	l, _ := conf.limit.Load().(float64)
-	return l
+// Limit returns the limit in bytes per second.
+func (conf *rateConfig) Limit() int64 {
+	conf.rwLock.RLock()
+	defer conf.rwLock.RUnlock()
+
+	return conf.limit
 }
 
-func (conf *RateConfig) Burst() int {
-	// We don't expect a type cast here because we know the value is int
-	b, _ := conf.limit.Load().(int)
-	return b
+// Burst returns the burst in bytes per second.
+func (conf *rateConfig) Burst() int {
+	conf.rwLock.RLock()
+	defer conf.rwLock.RUnlock()
+
+	return conf.burst
+}
+
+func validateBurst(burst int, limit int64) int {
+	if burst <= 0 {
+		burst = int(limit)
+	}
+
+	return burst
+}
+
+// NewRateConfig contains the over limit in bytes per second and the burst; maximum bytes that can be read in a single call.
+// The rateConfig instance that can be read and updated from multiple go routines.
+func NewRateConfig(limit int64, burst int) *rateConfig {
+
+	config := rateConfig{
+		limit: limit,
+		burst: validateBurst(burst, limit),
+	}
+
+	return &config
 }
