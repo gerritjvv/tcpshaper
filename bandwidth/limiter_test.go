@@ -53,9 +53,11 @@ func TestLimiter_ChildParentWaitNTimings(t *testing.T) {
 	var wg sync.WaitGroup
 	waitTimesCh := make(chan []time.Duration, len(childLimiters))
 
-	for _, l := range childLimiters {
+	for a, l := range childLimiters {
 		wg.Add(1)
 		childLimiter := l
+		routineIndex := a
+
 		go func() {
 
 			var waitTimes []time.Duration
@@ -72,15 +74,15 @@ func TestLimiter_ChildParentWaitNTimings(t *testing.T) {
 
 				timeDiff := afterWaitTime.Sub(startTime)
 
-				// time differences is flaky always, here I try my best.
-				if timeDiff.Seconds() > 1 {
-					waitTimes = append(waitTimes, 2*time.Second)
+				// useful debug output for tests
+				fmt.Printf("[%d] %d === time : %f\n", routineIndex, i, timeDiff.Seconds())
+
+				// time differences are flaky always, here I try my best.
+				if timeDiff.Round(time.Second).Seconds() <= 1 {
+					waitTimes = append(waitTimes, 0*time.Second)
 				} else {
-					if timeDiff.Round(time.Second) < 1 {
-						waitTimes = append(waitTimes, 0*time.Second)
-					} else {
-						waitTimes = append(waitTimes, 1*time.Second)
-					}
+					fmt.Printf(">>>>>>> Round to %f, got %f\n", timeDiff.Seconds(), timeDiff.Round(time.Second).Seconds())
+					waitTimes = append(waitTimes, timeDiff.Round(time.Second))
 				}
 
 				startTime = afterWaitTime
