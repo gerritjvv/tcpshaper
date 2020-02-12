@@ -148,3 +148,27 @@ func ExampleNewListener() {
 		fmt.Printf("error while closing listener %s", err)
 	}
 }
+
+// ExampleNewRateLimitedConn wrap an existing net.Con and rate limit its read write operations
+func ExampleNewRateLimitedConn() {
+
+	// Setup a limiter with a 2kb/s limit, and max 2kb per read event.
+	readLimiter := NewBandwidthLimiter(NewRateConfig(2048, 2048))
+
+	// Setup a limiter infinite write limit
+	writeLimiter := NewBandwidthLimiter(NewRateConfig(Inf, 0))
+
+	ctx := context.Background()
+
+	conn := &mockConn{} // get a connection
+
+	rConn := NewRateLimitedConn(ctx, readLimiter, writeLimiter, conn)
+
+	// Write is not rate limited
+	_, _ = rConn.Write([]byte("test string"))
+
+	// Read is reate limited
+	_, _ = rConn.Read(make([]byte, 1))
+
+	_ = rConn.Close()
+}

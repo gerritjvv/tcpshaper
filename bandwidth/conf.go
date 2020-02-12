@@ -1,8 +1,12 @@
 package bandwidth
 
 import (
+	"math"
 	"sync"
 )
+
+// Inf infinite rate
+var Inf int64 = math.MaxInt64
 
 // RateConfig holds the limiter configuration limit and burst values.
 type RateConfig struct {

@@ -47,8 +47,44 @@ func (c mockConn) SetWriteDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-// TestReadMoreThanBurst test that we get an error when we write more than the burst value
-func TestReadMoreThanBurst(t *testing.T) {
+// TestConfigUpdatesSeen
+func TestConfigUpdatesSeen(t *testing.T)  {
+	burst := 20
+	conf := NewRateConfig(10, burst)
+
+	limiter := NewBandwidthLimiter(conf)
+	ctx := context.Background()
+
+	conn := &mockConn{}
+	rConn := NewRateLimitedConn(ctx, limiter, limiter, conn)
+
+	_, err := rConn.Write(make([]byte, burst+1))
+	if err == nil {
+		t.Fatal()
+	}
+
+	// update burst and Write again
+	conf.SetBurst(burst+1)
+	_, err = rConn.Write(make([]byte, burst+1))
+	if err != nil {
+		t.Fatal()
+	}
+
+	// test limit
+	conf.SetLimit(1024)
+	conf.SetBurst(0) // this should make burst equal to limit
+
+	// try read the limit size
+	_, err = rConn.Write(make([]byte, conf.Limit()))
+	if err != nil {
+		t.Fatal()
+	}
+
+
+}
+
+// TestCannotReadMoreThanBurst test that we get an error when we write more than the burst value
+func TestCannotReadMoreThanBurst(t *testing.T) {
 	conf := NewRateConfig(10, 20)
 
 	limiter := NewBandwidthLimiter(conf)
@@ -58,7 +94,6 @@ func TestReadMoreThanBurst(t *testing.T) {
 	rConn := NewRateLimitedConn(ctx, limiter, limiter, conn)
 
 	_, err := rConn.Write(make([]byte, conf.Burst()+1))
-
 	if err == nil {
 		t.Fatal()
 	}
