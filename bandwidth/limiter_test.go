@@ -81,7 +81,6 @@ func TestLimiter_ChildParentWaitNTimings(t *testing.T) {
 				if timeDiff.Round(time.Second).Seconds() <= 1 {
 					waitTimes = append(waitTimes, 0*time.Second)
 				} else {
-					fmt.Printf(">>>>>>> Round to %f, got %f\n", timeDiff.Seconds(), timeDiff.Round(time.Second).Seconds())
 					waitTimes = append(waitTimes, timeDiff.Round(time.Second))
 				}
 

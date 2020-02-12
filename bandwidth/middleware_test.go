@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-
 func writeByteString(w io.Writer, v string) (int, error) {
 	// ignore correct value for n here, this is a test helper function
 	n, err := w.Write([]byte{byte(len(v))})
@@ -59,7 +58,6 @@ func TestNewListener(t *testing.T) {
 
 	listener := NewListener(ctx, NewListenerConfig(rateConf), tcpListner)
 
-
 	testString := "test string"
 
 	var wg sync.WaitGroup
@@ -89,7 +87,7 @@ func TestNewListener(t *testing.T) {
 
 	v, err := readByteString(conn)
 	if err != nil {
-		t.Fatalf("client readByteString, no error expected here %s" ,err)
+		t.Fatalf("client readByteString, no error expected here %s", err)
 	}
 
 	err = conn.Close()
@@ -115,4 +113,38 @@ func TestNewListener(t *testing.T) {
 		t.Fatalf("error expected here but got %s", err)
 	}
 
+}
+
+// ExampleNewListener shows how reate limit an existing net.Listener
+func ExampleNewListener() {
+
+	// Get a Listener, e.g tcp on any port
+	tcpListner, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+
+	ctx := context.Background()
+
+	// configure rate limit to:
+	// total read+write traffic == 1mbs
+	// Each connection read+write == 2kbs
+	// The maximum that can be read or written at any one time is 2kb
+	serverRate := NewRateConfig(1024*1024, 2048)
+	connRate := NewRateConfig(2048, 2048)
+
+	listener := NewListener(ctx, &ListenerConfig{
+		ReadServerRate:  serverRate,
+		WriteServerRate: serverRate,
+		ReadConnRate:    connRate,
+		WriteConnRate:   connRate,
+	}, tcpListner)
+
+	// Now use the listener
+	// e.g listener.Accept()
+
+	err = listener.Close()
+	if err != nil {
+		fmt.Printf("error while closing listener %s", err)
+	}
 }
