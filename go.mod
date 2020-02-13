@@ -3,6 +3,7 @@ module github.com/gerritjvv/tcpshaper
 go 1.12
 
 require (
+	github.com/rjeczalik/netxtest v0.0.0-20190924130813-765a8eee5d0b
 	golang.org/x/crypto v0.0.0-20200208060501-ecb85df21340 // indirect
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
 	golang.org/x/mod v0.2.0 // indirect

@@ -21,7 +21,7 @@ func (c *rateLimitedConnWrapper) Read(b []byte) (int, error) {
 		return 0, err
 	}
 
-	return c.Conn.Write(b)
+	return c.Conn.Read(b)
 }
 
 
