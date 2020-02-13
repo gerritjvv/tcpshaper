@@ -22,6 +22,13 @@ test() {
   go test -coverprofile=coverage.out -v ./...
 }
 
+netxtest () {
+
+  go run main.go -count 100 && \
+  go run main.go -count 100 -limit 0 && \
+  go run main.go -count 100 -limit-conn 0
+
+}
 case "$CMD" in
 build)
   build
@@ -31,6 +38,9 @@ report)
   ;;
 test)
   test
+  ;;
+netxtest )
+  netxtest
   ;;
 *)
   echo "report|test|build"

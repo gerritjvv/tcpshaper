@@ -57,13 +57,23 @@ func validateBurst(burst int, limit int64) int {
 	return burst
 }
 
+func validateLimit(limit int64) int64 {
+	if limit < 1 {
+		return Inf
+	}
+
+	return limit
+}
+
 // NewRateConfig contains the over limit in bytes per second and the burst; maximum bytes that can be read in a single call.
 // The RateConfig instance that can be read and updated from multiple go routines.
 func NewRateConfig(limit int64, burst int) *RateConfig {
 
+	vLimit := validateLimit(limit)
+
 	config := RateConfig{
-		limit: limit,
-		burst: validateBurst(burst, limit),
+		limit: vLimit,
+		burst: validateBurst(burst, vLimit),
 	}
 
 	return &config
